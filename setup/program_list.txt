@@ -1,0 +1,13 @@
+mpv
+gnome-tweaks
+virtualenv
+intel-media-va-driver-non-free
+intel-gpu-tools
+gufw
+lm-sensors
+psensor
+curl
+git
+jq
+autojump
+python3-tk

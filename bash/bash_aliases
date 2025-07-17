@@ -1,0 +1,7 @@
+alias update='sudo apt update'
+alias upgrade='sudo apt upgrade -y'
+alias update-snap='sudo snap refresh'
+alias usage='sudo intel_gpu_top'
+alias trim='sudo fstrim -va'
+alias internet='sudo systemctl restart NetworkManager'
+alias cleanshistory='truncate -s 0 $HOME/.bash_history'
