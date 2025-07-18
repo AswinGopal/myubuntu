@@ -275,26 +275,28 @@ configureBash() {
         success_message "Existing .bashrc backed up as .bashrc.backup"
     fi
     
-    # Copy files from source to destination
-    if cp -r "$githubDirectory/bash/"* "$HOME/"; then
-        # Get the list of copied files and hide them
-        copied_files=("$HOME/"*)
-        for file in "${copied_files[@]}"; do
-            if [[ -f "$file" ]]; then
-                if mv "$file" "$HOME/.$(basename "$file")"; then
-                    continue
-                else
-                    log_error "Failed to hide $file"
-                    return 1
-                fi
+    # Copy and hide dot files from source to destination 
+    copied_files=()
+    for file in "$githubDirectory/bash/"*; do
+        filename=$(basename "$file")
+        dest="$HOME/$filename"
+        hidden_dest="$HOME/.$filename"
+
+        if cp "$file" "$dest"; then
+            if mv "$dest" "$hidden_dest"; then
+                copied_files+=("$hidden_dest")
+            else
+                log_error "Failed to hide $filename"
+                return 1
             fi
-        done
-        success_message "Bash setup successful."
-        return 0
-    else
-        log_error "Failed to copy bash files"
-        return 1
-    fi
+        else
+            log_error "Failed to copy $filename"
+            return 1
+        fi
+    done
+
+    success_message "Bash setup successful. Copied and hid files: ${copied_files[*]}"
+    return 0
 }
 
 # Function to download and configure yt-dlp
