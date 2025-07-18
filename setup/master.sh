@@ -6,8 +6,9 @@ RED='\e[1;38;2;255;51;51m'
 GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
 
-# Github directory
+# Global directories
 githubDirectory="$(git rev-parse --show-toplevel 2>/dev/null)"
+tempDirectory="/tmp/SETUP"
 
 # Handle error messages and print them
 log_error() {
@@ -36,26 +37,45 @@ success_message() {
     echo -e "${GREEN}$1 \xE2\x9C\x94${RC}"
 }
 
-# Function for updating repositories
-update_repositories() {
-    show_info "Updating Ubuntu repositories..."
-    if sudo apt update > /dev/null 2>&1; then
-        success_message "Repositories updated successfully"
+# Detect if running in a live environment
+is_live_environment() {
+    if grep -q "boot=casper" /proc/cmdline || [[ "$(findmnt -n -o FSTYPE /)" == "overlay" ]]; then
+        return 0  # Live session
     else
-        log_error "Failed to update repositories"
-        exit 1
+        return 1  # Installed system
     fi
 }
 
-# Function for enabling Universe repository
-enable_universe_repository() {
-    show_info "Enabling Universe repository..."
-    if sudo add-apt-repository universe -y > /dev/null 2>&1; then
-        success_message "Universe repository enabled successfully"
-        return 0
-    else
-        log_error "Failed to enable Universe repository"
+# Update repos and enable universe if in live environment
+update_repository() {
+    show_info "Updating package repositories..."
+    if ! sudo apt update > /dev/null 2>&1; then
+        log_error "Repository update failed."
         exit 1
+    fi
+    success_message "Repository update successful."
+
+    if is_live_environment; then
+        show_info "Live environment detected. Enabling Universe repository..."
+
+        if ! grep -Rq "^deb .*universe" /etc/apt/sources.list /etc/apt/sources.list.d/; then
+            if sudo add-apt-repository universe -y > /dev/null 2>&1; then
+                success_message "Universe repository enabled successfully."
+                
+                if ! sudo apt update > /dev/null 2>&1; then
+                    log_error "Failed to update Universe repository."
+                    exit 1
+                fi
+                success_message "Universe repository updated successfully."
+            else
+                log_error "Failed to enable Universe repository."
+                exit 1
+            fi
+        else
+            success_message "Universe repository already enabled."
+        fi
+    else
+        show_info "Installed system detected. Skipping Universe repository check."
     fi
 }
 
@@ -76,7 +96,7 @@ install_programs() {
     if [ -f program_list.txt ]; then
         while IFS= read -r program; do
             echo -e "\n\e[1;30;47mInstalling $program...${RC}"
-            if sudo apt-get install -y "$program" > /dev/null 2>&1; then
+            if sudo apt install -y "$program" > /dev/null 2>&1; then
                 success_message "$program installed"
             else
                 log_error "Failed to install $program \xE2\x9C\x98"
@@ -199,7 +219,7 @@ change_ubuntu_settings() {
 
 # Function to install terminal theme
 configureTerminalTheme() {
-    font_download_directory="/tmp/SETUP/"
+    font_download_directory="$tempDirectory"
     font_install_path="/usr/local/share/fonts/"
     
     # Add more fonts with their respective filenames and extraction directories here
@@ -213,8 +233,8 @@ configureTerminalTheme() {
 
     for font_file in "${!font_info[@]}"; do
         font_name="${font_info[$font_file]}"
-        font_download_path="${font_download_directory}${font_file}"
-        font_extract_path="${font_download_directory}${font_name}"
+        font_download_path="${font_download_directory}/${font_file}"
+        font_extract_path="${font_download_directory}/${font_name}"
 
         # Downloading latest release of the fonts from nerdfonts.com
         latest_release_url=$(curl -s "https://api.github.com/repos/ryanoasis/nerd-fonts/releases/latest" | jq -r ".assets[] | select(.name == \"$font_file\") | .browser_download_url")
@@ -394,30 +414,29 @@ finalConfigurations() {
 
 # Funtion to cleanup the configuration files
 cleanUp() {
-    local directory="/tmp/SETUP"
-    show_info "Cleaning junk files..."
+    show_info "Removing temporary directory..."
 
-    if [ -d "$directory" ]; then
-        rm -rf "$directory"
-        success_message "Junk files removed succesfully"
+    if [ -d "$tempDirectory" ]; then
+        rm -rf "$tempDirectory"
+        success_message "Temporary directory removed succesfully"
         return 0
     else
-        log_error "No junk files to remove"
+        log_error "No temporary directory present to remove"
         return 1
     fi
 }
 
 # Function to create SETUP directory in /tmp if it doesn't exist
 create_SETUP_directory() {
-    if [ ! -d "/tmp/SETUP" ]; then
-        mkdir -p "/tmp/SETUP"
+    if [ ! -d "$tempDirectory" ]; then
+        mkdir -p "$tempDirectory"
     fi
 }
 
 # Main function
 
 # Array of valid case names
-valid_args=("full" "desktop")
+valid_args=("full" "test")
 # Join the elements of the array with a pipe separator
 valid_args_str=$(IFS=\|; echo "${valid_args[*]}")
 
@@ -430,10 +449,10 @@ check_argument() {
         full)
             show_info "Running install function..."
 
-            update_repositories
+            update_repository
             update_snap_packages
             install_programs
-            setup_firefox_profiles
+            #setup_firefox_profiles
             change_ubuntu_settings
             finalConfigurations
             cleanUp
@@ -443,7 +462,7 @@ check_argument() {
             ;;
         *)
             log_error "The argument you provided is invalid"
-            log_error "Usage: bash script_name.sh [${valid_args_str}]"
+            log_error "Usage: script_name.sh [${valid_args_str}]"
             return 1
             ;;
     esac
@@ -452,7 +471,7 @@ check_argument() {
 # Check for arguments and invoke the necessary actions
 if [ $# -eq 0 ]; then
     log_error "Please provide an argument."
-    log_error "Usage: bash script_name.sh [${valid_args_str}]"
+    log_error "Usage: script_name.sh [${valid_args_str}]"
     exit 1
 fi
 
