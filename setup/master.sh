@@ -7,7 +7,7 @@ GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
 
 # Github directory
-githubDirectory="/tmp/SETUP/Github/"
+githubDirectory="$(dirname "$(realpath "$0")")"
 
 # Handle error messages and print them
 log_error() {
