@@ -381,6 +381,33 @@ finalConfigurations() {
     success_message "\nEverything setup successfully. Enjoy Linux"
 }
 
+installVpn() {
+    local downloadDirectory="$tempDirectory"
+    local protonDebUrl="https://repo.protonvpn.com/debian/dists/stable/main/binary-all/protonvpn-stable-release_1.0.8_all.deb"
+    local protonFileName="${protonDebUrl##*/}"  # Extract the filename from the URL
+
+    show_info "Installing ProtonVPN..."
+
+    if [ ! -f "$downloadDirectory/$protonFileName" ]; then
+        if ! wget -q --show-progress=off -P "$downloadDirectory" "$protonDebUrl"; then
+            log_error "Failed to download ProtonVPN package"
+            return 1
+        fi
+    fi
+
+    sudo dpkg -i "$downloadDirectory/$protonFileName" > /dev/null 2>&1
+
+    sudo apt update > /dev/null 2>&1
+
+    if ! sudo apt install proton-vpn-gnome-desktop -y > /dev/null 2>&1; then
+        log_error "Failed to install ProtonVPN"
+        return 1
+    fi
+
+    success_message "ProtonVPN installed successfully"
+    return 0
+}
+
 # Funtion to cleanup the configuration files
 cleanUp() {
     show_info "Removing temporary directory..."
@@ -428,6 +455,11 @@ check_argument() {
             ;;
         test)
             show_info "Running test functions..."
+            update_repository
+            setup_firefox_profiles
+            installVpn
+            change_ubuntu_settings
+            cleanUp
             ;;
         *)
             log_error "The argument you provided is invalid"
