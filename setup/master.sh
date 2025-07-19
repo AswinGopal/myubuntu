@@ -37,15 +37,6 @@ success_message() {
     echo -e "${GREEN}$1 \xE2\x9C\x94${RC}"
 }
 
-# Detect if running in a live environment
-is_live_environment() {
-    if grep -q "boot=casper" /proc/cmdline || [[ "$(findmnt -n -o FSTYPE /)" == "overlay" ]]; then
-        return 0  # Live session
-    else
-        return 1  # Installed system
-    fi
-}
-
 # Update repos and enable universe if in live environment
 update_repository() {
     show_info "Updating package repositories..."
@@ -54,29 +45,7 @@ update_repository() {
         exit 1
     fi
     success_message "Repository update successful."
-
-    if is_live_environment; then
-        show_info "Live environment detected. Enabling Universe repository..."
-
-        if ! grep -Rq "^deb .*universe" /etc/apt/sources.list /etc/apt/sources.list.d/; then
-            if sudo add-apt-repository universe -y > /dev/null 2>&1; then
-                success_message "Universe repository enabled successfully."
-                
-                if ! sudo apt update > /dev/null 2>&1; then
-                    log_error "Failed to update Universe repository."
-                    exit 1
-                fi
-                success_message "Universe repository updated successfully."
-            else
-                log_error "Failed to enable Universe repository."
-                exit 1
-            fi
-        else
-            success_message "Universe repository already enabled."
-        fi
-    else
-        show_info "Installed system detected. Skipping Universe repository check."
-    fi
+    return 0
 }
 
 update_snap_packages() {
