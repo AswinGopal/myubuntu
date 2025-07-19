@@ -6,8 +6,5 @@ intel-gpu-tools
 gufw
 lm-sensors
 psensor
-curl
-git
-jq
 autojump
-python3-tk
+jpegoptim
