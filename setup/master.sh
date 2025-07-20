@@ -345,10 +345,10 @@ configureTwitch() {
 configureVirtualenv() {
     show_info "Installing Python virtual environment..."
 
-    if virtualenv $HOME/myenv > /dev/null 2>&1; then
+    if virtualenv $HOME/myenv/streamlink > /dev/null 2>&1; then
         show_info "Installing Streamlink..."
-        cd $HOME/myenv/bin/
-        if source activate; then
+        
+        if . "$HOME/myenv/streamlink/bin/activate"; then
             if pip install -U streamlink > /dev/null 2>&1; then
                 deactivate
                 success_message "Streamlink installed successfully."
