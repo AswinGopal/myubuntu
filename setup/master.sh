@@ -258,6 +258,13 @@ configureMpv() {
 configureBash() {
     show_info "Configuring bash... "
 
+    # Download git_info
+    if ! curl -sL https://github.com/AswinGopal/git_info/releases/latest/download/git_info -o "$HOME/.local/bin/git_info"; then
+        log_error "Failed to download git_info binary"
+    else
+        success_message "git_info downloaded successfully."
+    fi
+
     # Backup existing .bashrc
     if [ -f "$HOME/.bashrc" ]; then
         cp "$HOME/.bashrc" "$HOME/.bashrc.backup" || { log_error "Failed to backup existing .bashrc"; return 1; }
@@ -292,8 +299,11 @@ configureBash() {
 configureYtdlp() {
     show_info "Installing yt-dlp..."
 
-    if [ ! -d "$HOME/.local/bin" ]; then
-        mkdir -p "$HOME/.local/bin" || { log_error "Failed to create directory $HOME/.local/bin"; return 1; }
+    # Download ytdownloader
+    if ! curl -sL https://github.com/AswinGopal/ytdownloader/releases/latest/download/ytdownloader -o "$HOME/.local/bin/ytdownloader"; then
+        log_error "Failed to download ytdownloaer binary"
+    else
+        success_message "ytdownloader downloaded successfully."
     fi
 
     if ! curl -sL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o "$HOME/.local/bin/yt-dlp"; then
@@ -309,18 +319,22 @@ configureYtdlp() {
 configureBinary() {
     show_info "Configuring binaries..."
 
-    # Copying my binaries except channels.toml
+    # Copying my binaries and config files except channels.toml from repo bin/
     for file in "$githubDirectory/bin/"*; do
         [[ "$file" == *.toml ]] && continue
         cp "$file" "$HOME/.local/bin/" || { log_error "Failed to copy $file"; return 1; }
     done > /dev/null 2>&1
+
+    configureYtdlp
+    configureBash
+    configureTwitch
 
     # Ensure all files in ~/.local/bin are executable
     for file in "$HOME/.local/bin/"*; do
         [ -f "$file" ] && [ ! -x "$file" ] && chmod +x "$file"
     done
 
-    success_message "Binaries copied to .local/bin."
+    success_message "Binaries configured to successfully."
     return 0
 }
 
@@ -330,7 +344,14 @@ configureTwitch() {
 
     local twitchDir="$HOME/.config/twitchtv"
 
-    #Copy channels.toml to twitchDir
+    # Download twitchtv
+    if ! curl -sL https://github.com/AswinGopal/twitchtv/releases/latest/download/twitchtv -o "$HOME/.local/bin/twitchtv"; then
+        log_error "Failed to download twitchtv binary"
+    else
+        success_message "twitchtv downloaded successfully."
+    fi
+
+    # Copy channels.toml to twitchDir
     if [ ! -d "$twitchDir" ]; then
         mkdir -p "$twitchDir" || { log_error "Failed to create $twitchDir"; return 1; }
     fi
@@ -370,12 +391,9 @@ configureVirtualenv() {
 
 # Function to finalize the installation
 finalConfigurations() {
-    configureBash
+    configureBinary
     configureTerminalTheme
     configureMpv
-    configureYtdlp
-    configureBinary
-    configureTwitch
     configureVirtualenv
 
     success_message "\nEverything setup successfully. Enjoy Linux"
@@ -429,7 +447,14 @@ create_SETUP_directory() {
     fi
 }
 
-# Main function
+# Function to create ~/.local/bin dir if not exist
+create_local_binary_directory() {
+    if [ ! -d "$HOME/.local/bin" ]; then
+        mkdir -p "$HOME/.local/bin" || { log_error "Failed to create directory $HOME/.local/bin"; return 1; }
+    fi
+}
+
+#---------------------- Main function-------------------------
 
 # Array of valid case names
 valid_args=("full" "test")
@@ -438,6 +463,7 @@ valid_args_str=$(IFS=\|; echo "${valid_args[*]}")
 
 check_argument() {
     create_SETUP_directory
+    create_local_binary_directory
 
     local arg="$1"
 

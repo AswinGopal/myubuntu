@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Add your keypath here
 KEY_PATH=""
 
 # Check if SSH agent is running and usable
