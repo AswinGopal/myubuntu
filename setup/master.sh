@@ -40,11 +40,41 @@ success_message() {
 # Update repos and enable universe if in live environment
 update_repository() {
     show_info "Updating package repositories..."
-    if ! sudo apt update > /dev/null 2>&1; then
+    if ! sudo apt-get update > /dev/null 2>&1; then
         log_error "Repository update failed."
         exit 1
     fi
     success_message "Repository update successful."
+    return 0
+}
+
+# Function to check for dependencies and automatically install them if missing
+check_dependencies() {
+    show_info "Checking for required dependencies..."
+
+    local dependencies=("git" "curl" "wget" "unzip" "jq" "sed")
+    local missing_deps=()
+
+    for cmd in "${dependencies[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            missing_deps+=("$cmd")
+        fi
+    done
+
+    # If missing dependencies are found, install them directly
+    if [ ${#missing_deps[@]} -ne 0 ]; then
+        show_info "Found missing dependencies: ${missing_deps[*]}. Attempting to install them now..."
+
+        # Use pacman to install all missing packages without a prompt
+        if ! sudo apt-get install "${missing_deps[@]}"; then
+            log_error "Failed to install dependencies."
+            return 1
+        fi
+        success_message "Dependencies installed successfully."
+    else
+        success_message "All dependencies are already installed."
+    fi
+
     return 0
 }
 
@@ -65,7 +95,7 @@ install_programs() {
     if [ -f program_list.txt ]; then
         while IFS= read -r program; do
             echo -e "\n\e[1;30;47mInstalling $program...${RC}"
-            if sudo apt install -y "$program" > /dev/null 2>&1; then
+            if sudo apt-get install -y "$program" > /dev/null 2>&1; then
                 success_message "$program installed"
             else
                 log_error "Failed to install $program \xE2\x9C\x98"
@@ -400,9 +430,9 @@ installVpn() {
 
     sudo dpkg -i "$downloadDirectory/$protonFileName" > /dev/null 2>&1
 
-    sudo apt update > /dev/null 2>&1
+    sudo apt-get update > /dev/null 2>&1
 
-    if ! sudo apt install proton-vpn-gnome-desktop -y > /dev/null 2>&1; then
+    if ! sudo apt-get install proton-vpn-gnome-desktop -y > /dev/null 2>&1; then
         log_error "Failed to install ProtonVPN"
         return 1
     fi
@@ -447,6 +477,10 @@ valid_args=("full" "test")
 valid_args_str=$(IFS=\|; echo "${valid_args[*]}")
 
 check_argument() {
+    if ! check_dependencies; then
+        exit 1
+    fi
+
     create_SETUP_directory
     create_local_binary_directory
 
