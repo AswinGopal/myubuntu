@@ -271,27 +271,16 @@ configureBash() {
         success_message "Existing .bashrc backed up as .bashrc.backup"
     fi
     
-    # Copy and hide dot files from source to destination 
-    copied_files=()
+    # Copy and hide dot files from source to destination
     for file in "$githubDirectory/bash/"*; do
+        local filename
         filename=$(basename "$file")
-        dest="$HOME/$filename"
-        hidden_dest="$HOME/.$filename"
-
-        if cp "$file" "$dest"; then
-            if mv "$dest" "$hidden_dest"; then
-                copied_files+=("$hidden_dest")
-            else
-                log_error "Failed to hide $filename"
-                return 1
-            fi
-        else
-            log_error "Failed to copy $filename"
-            return 1
+        if ! cp "$file" "$HOME/.$filename"; then
+            log_error "Failed to copy $filename to $HOME/.$filename"
         fi
     done
 
-    success_message "Bash setup successful. Copied and hid files: ${copied_files[*]}"
+    success_message "Bash setup successful."
     return 0
 }
 
@@ -365,26 +354,22 @@ configureTwitch() {
 # Function to configure virtualenv for yt-dlp and streamlink
 configureVirtualenv() {
     show_info "Installing Python virtual environment..."
+    local env_path="$HOME/myenv/streamlink"
 
-    if virtualenv $HOME/myenv/streamlink > /dev/null 2>&1; then
-        show_info "Installing Streamlink..."
-        
-        if . "$HOME/myenv/streamlink/bin/activate"; then
-            if pip install -U streamlink > /dev/null 2>&1; then
-                deactivate
-                success_message "Streamlink installed successfully."
-                return 0
-            else
-                log_error "Failed to install streamlink"
-                deactivate
-                return 1
-            fi
-        else
-            log_error "Failed to activate virtualenv"
+    # Create the virtual environment only if it doesn't already exist
+    if [ ! -d "$env_path" ]; then
+        if ! output=$(virtualenv "$env_path" 2>&1); then
+            log_error "Failed to create Python virtual environment."
             return 1
         fi
+    fi
+
+    show_info "Installing Streamlink..."
+    if output=$("$env_path/bin/pip" install -U streamlink 2>&1); then
+        success_message "Streamlink installed successfully."
+        return 0
     else
-        log_error "Failed to create virtual environment"
+        log_error "Failed to install streamlink."
         return 1
     fi
 }
