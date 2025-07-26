@@ -8,3 +8,4 @@ lm-sensors
 psensor
 autojump
 jpegoptim
+tree
