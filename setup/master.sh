@@ -66,7 +66,7 @@ check_dependencies() {
         show_info "Found missing dependencies: ${missing_deps[*]}. Attempting to install them now..."
 
         # Use pacman to install all missing packages without a prompt
-        if ! sudo apt-get install "${missing_deps[@]}"; then
+        if ! sudo apt-get install -y "${missing_deps[@]}"; then
             log_error "Failed to install dependencies."
             return 1
         fi
